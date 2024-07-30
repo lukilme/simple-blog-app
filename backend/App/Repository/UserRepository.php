@@ -26,7 +26,6 @@ class UserRepository
                 :encryption_key,
                 :name_user,
                 :registration_date);";
-            echo $query;
             $stmt = $user->db->prepare($query);
             $user->__set("registration_date", date("Y-m-d H:i:s"));
             $stmt->bindValue(":username", $user->__get("username"));
