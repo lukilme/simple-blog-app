@@ -12,13 +12,13 @@ abstract class Controller {
     }
     protected function render($view, $layout = "layout") {
         $this->view->page = $view;
-        require_once "../App/Views/" . $layout . ".phtml";
+        require_once "../App/View/" . $layout . ".phtml";
     }
     protected function content() {
         $actual_class = get_class($this);
-        $actual_class = str_replace('App\\Controllers\\', '', $actual_class);
+        $actual_class = str_replace('App\\Controller\\', '', $actual_class);
         $actual_class = strtolower(str_replace('Controller', '', $actual_class));
-        require_once "../App/Views/" . $actual_class . "/" . $this->view->page . ".phtml";
+        require_once "../App/View/" . $actual_class . "/" . $this->view->page . ".phtml";
     }
     protected function http_response_code($code = NULL) {
         if ($code !== NULL) {
@@ -71,5 +71,12 @@ abstract class Controller {
             $code = (isset($GLOBALS['http_response_code']) ? $GLOBALS['http_response_code'] : 200);
         }
         return $code;
+    }
+
+    public function sendJsonResponse(array $response)
+    {
+        header("Content-Type: application/json");
+        echo json_encode($response);
+        exit();
     }
 }

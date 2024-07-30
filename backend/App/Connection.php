@@ -13,7 +13,7 @@ class Connection {
             $user = $_ENV['DB_USERNAME'];
             $pass = $_ENV['DB_PASSWORD'];
             $port = $_ENV['DB_PORT'];
-            
+      
             $connection = new \PDO(
                 "mysql:host=$host;port=$port;dbname=$db_name",
                 $user,
@@ -21,9 +21,7 @@ class Connection {
             );
             
             $connection->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            echo '<pre>';
-            print_r($connection);
-            echo '</pre>';
+
             return $connection;
         } catch(\Exception $e){
             echo "Error to connect on database: " . $e->getMessage();

@@ -22,11 +22,14 @@ class UserValidator
         }
         self::validateUsername($user, $newUser["username"], $errors);
         self::validateEmail($user, $newUser["email"], $errors);
-        self::validatePassword(
-            $newUser["password"],
-            $newUser["repeat_password"],
-            $errors
-        );
+        if(!isset($errors['password']) && !isset($errors['repeat_password'])){
+            self::validatePassword(
+                $newUser["password"],
+                $newUser["repeat_password"],
+                $errors
+            );
+        }
+        
     }
 
     public static function validateLogin(

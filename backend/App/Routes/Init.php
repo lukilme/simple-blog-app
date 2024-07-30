@@ -29,7 +29,7 @@ abstract class Init{
             $pattern = str_replace('/', '\/', $pattern);
             if (preg_match('/^' . $pattern . '$/', $url, $matches)) {
                 array_shift($matches); 
-                $class = "App\\Controllers\\".ucfirst($route['controller']);
+                $class = "App\\Controller\\".ucfirst($route['controller']);
                 $controller = new $class;
                 $action = $route['action'];
                 $controller->$action();

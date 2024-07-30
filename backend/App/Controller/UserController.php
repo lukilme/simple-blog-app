@@ -8,59 +8,21 @@ use App\Exception\UserException;
 class UserController extends Controller
 {
     /**
-     * renders login page
-     */
-    public function login()
-    {
-        if ($this->checkSession()) {
-            header("Location: /home");
-            exit();
-        } else {
-            $this->render("login");
-        }
-    }
-
-    /**
-     * if logged in, renders the user profile page
-     */
-    public function perfil()
-    {
-        if ($this->checkSession()) {
-            $this->render("perfil");
-        } else {
-            header("Location: /login");
-            exit();
-        }
-    }
-
-    /**
-     * renders register page
-     */
-    public function register()
-    {
-        if ($this->checkSession()) {
-            header("Location: /home");
-            exit();
-        } else {
-            $this->render("register");
-        }
-    }
-
-    /**
-     * Register the user, if the parameters are valid
+     * Register the user, if the parameters are valid.
      * @param REQUEST = {name, username, email, password, repeat_password}
-     * @return RESPONSE 400 for non-compliance with business rules
-     * @return RESPONSE 201 for successful register
+     * @return RESPONSE 400 for non-compliance with business rules.
+     * @return RESPONSE 201 for successful register.
      * @return RESPONSE 500 error that the server did not know how to handle
+     * @return RESPONSE 403 if the user is already authenticated.
      */
     public function register_user()
     {
         try {
             if ($this->checkSession()) {
-                header("Location: /home");
-                exit();
+                return $this->sendResponse(403, [
+                    "message" => "You are already authenticated",
+                ]);
             }
-
             $errors = [];
             $registerAttributes = [
                 "name",
@@ -75,7 +37,7 @@ class UserController extends Controller
             // Check if there was a decoding error
             if (json_last_error() !== JSON_ERROR_NONE) {
                 return $this->sendResponse(400, [
-                    "errors" => ["general" => "Invalid data."],
+                    "error" => "Invalid data.",
                 ]);
             }
 
@@ -92,20 +54,21 @@ class UserController extends Controller
             return $this->sendResponse(201, [
                 "message" => "Registration successful",
             ]);
-        } catch (UserException $e) {
+        } catch (UserException $exception) {
+            error_log($exception->getMessage());
             return $this->sendResponse(500, [
-                "errors" => "Internal server error",
+                "message" => "Internal server error",
+                "error" => $exception->getMessage(),
             ]);
         }
     }
 
-
     /**
-    * function to send message to the customer
-    * @param number statusCode number code that summarizes the final result of the operation
-    * @param array|string data content with requested data or response with errors
-    * @return RESPONSE response with message code and content
-    */
+     * function to send message to the customer
+     * @param number statusCode number code that summarizes the final result of the operation
+     * @param array|string data content with requested data or response with errors
+     * @return RESPONSE response with message code and content
+     */
     private function sendResponse($statusCode, $data)
     {
         http_response_code($statusCode);
@@ -126,77 +89,103 @@ class UserController extends Controller
         }
     }
 
-    public function update(){
-        
+    public function update()
+    {
     }
 
     /**
      * Perform authentication.
      * Check if the username and password correspond to any
      * user in the database and store in the session
+     * @return RESPONSE 400 for non-compliance with business rules.
+     * @return RESPONSE 401 password and keys are incompatible
+     * @return RESPONSE 200 for successful logged.
+     * @return RESPONSE 500 error that the server did not know how to handle
+     * @return RESPONSE 403 if the user is already authenticated.
      */
     public function authenticate()
     {
         try {
             if ($this->checkSession()) {
-                header("Location: /home");
-                exit();
+                return $this->sendResponse(403, [
+                    "message" => "success",
+                ]);
+                return;
             }
             $errors = [];
-            $userLogin = [];
-            $loginAttributes = ["key", "password"];
-            foreach ($loginAttributes as $attribute) {
-                $this->checkIfIsEmpty($_POST, $attribute, $errors);
-                $userLogin[$attribute] = $_POST[$attribute];
+            $input = file_get_contents("php://input");
+            $userLogin = json_decode($input, true);
+
+            // Check if there was a decoding error
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return $this->sendResponse(400, [
+                    "error" => "Invalid data.",
+                ]);
             }
 
-            if (count($errors) != 0) {
-                echo "<pre>";
-                print_r($errors);
-                echo "</pre>";
-                if (isset($errors["key"]) && isset($errors["password"])) {
-                    header("Location: /login?error=username&password");
-                    exit();
-                }
-                if (isset($errors["key"])) {
-                    header("Location: /login?error=key");
-                    exit();
-                } else {
-                    header("Location: /login?error=password");
-                    exit();
-                }
+            $attributes = ["key", "password"];
+
+            foreach ($attributes as $attribute) {
+                $this->checkIfIsEmpty($userLogin, $attribute, $errors);
             }
 
-            UserService::authenticateUser($userLogin, $errors);
-
-            if (count($errors) != 0) {
-                //TODO: exception thrown for errors occurring during authentication
-                echo "<pre>";
-                print_r($errors);
-                echo "</pre>";
-                //header("Location: /login?error=" . $errors["exception"]);
-            } else {
-                header("Location: /home");
+            if (!empty($errors)) {
+                return $this->sendResponse(400, [
+                    "message" => "Bad Request.",
+                    "errors" => $errors,
+                ]);
             }
+
+            $authenticationErrors = UserService::authenticateUser(
+                $userLogin,
+                $errors
+            );
+
+            if (!empty($authenticationErrors)) {
+                return $this->sendResponse(401, [
+                    "message" => "Login attempt failed",
+                    "errors" => $authenticationErrors,
+                ]);
+            }
+            return $this->sendResponse(200, [
+                "message" => "success",
+            ]);
         } catch (UserException $exception) {
-            switch ($exception->getErrorCode()) {
-                case UserException::INVALID_SESSION_CODE:
-                    break;
-            }
-            //TODO: exception handling
-            echo "<pre>";
-            print_r($exception);
-            echo "</pre>";
+            // Log the exception for debugging purposes
+            error_log($exception->getMessage());
+            return $this->sendResponse(500, [
+                "message" => "Internal server error",
+                "error" => $exception->getMessage(),
+            ]);
         }
     }
 
     /**
-     * End the user session and take them to the login page
+     * End the user session
+     * @return RESPONSE 401 if not authenticated.
+     * @return RESPONSE 200 for successful logout.
+     * @return RESPONSE 500 error that the server did not know how to handle
      */
-    public static function logout(){
-        session_start();
-        session_destroy();
-        header("Location: /login");
+    public function logout()
+    {
+        try {
+            if ($this->checkSession()) {
+                session_start();
+                session_destroy();
+                header("Location: /login");
+                return $this->sendResponse(200, [
+                    "message" => "Logout successful",
+                ]);
+            } else {
+                return $this->sendResponse(401, [
+                    "message" => "You are not authenticated",
+                ]);
+            }
+        } catch (\Exception $exception) {
+            return $this->sendResponse(500, [
+                "message" => "Internal server error",
+            ]);
+        }
     }
 
     /**

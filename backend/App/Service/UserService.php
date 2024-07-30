@@ -22,9 +22,6 @@ class UserService extends Service
         try {
             $user = Container::getModel("User");
 
-            echo '<pre>';
-            print_r($newUser);
-            echo '</pre>';
             UserValidator::validate($user, $newUser, $errors);
 
             if (count($errors) == 0) {
