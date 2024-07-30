@@ -1,2 +1,4 @@
-vendor
+.vite
+node_modules
 .env
+vendor
